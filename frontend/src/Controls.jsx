@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { formatTime } from "./format";
 
-// Play/pause button and the seek slider. Everyone can use them: the Host and Moderators
-// change the video at once, everyone else sends a request (Room.jsx decides which).
 export default function Controls({ hasVideo, playing, progress, mayControl, onPlayPause, onSeek }) {
   const [scrub, setScrub] = useState(null); // a number while the slider is being dragged
   const duration = Number.isFinite(progress.duration) && progress.duration > 0 ? progress.duration : 0;
