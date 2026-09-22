@@ -4,8 +4,7 @@ from .models import Room
 
 
 class RoomStore:
-    """Plain in-memory storage. Swap this out for Redis/a database later
-    if you need rooms to survive a restart or to run more than one worker."""
+ 
 
     def __init__(self) -> None:
         self._rooms: Dict[str, Room] = {}
@@ -24,5 +23,5 @@ class RoomStore:
         self._rooms.pop(code, None)
 
 
-# a single shared store for the whole process
+
 room_store = RoomStore()
