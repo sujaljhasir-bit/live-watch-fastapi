@@ -20,7 +20,7 @@ class RoomService:
     def __init__(self, room_repository: RoomStore):
         self.room_repository = room_repository
 
-    # ---------------------------------------------------------- helpers
+   
 
     def _find_room(self, code: Optional[str]) -> Room:
         if code is None:
@@ -54,7 +54,7 @@ class RoomService:
             participants=participants,
         )
 
-    # look the person up FIRST, then check the role
+    
     def _get_participant_or_throw(self, room: Room, participant_id: Optional[str]) -> Participant:
         found = room.get_participant(participant_id) if participant_id else None
         if found is None:
@@ -70,7 +70,7 @@ class RoomService:
         if room.video_id is None:
             raise BadRequestError("Choose a video first")
 
-    # ---------------------------------------------------------- playback
+  
 
     def play(self, code: str, participant_id: Optional[str], time_s: Optional[float]) -> RoomResponse:
         room = self._find_room(code)
@@ -95,7 +95,7 @@ class RoomService:
         room.seek(time_s)
         return self._to_response(room)
 
-    # ---------------------------------------------------------- rooms / people
+
 
     def create_room(self, username: str) -> JoinResponse:
         room = Room(self._generate_code())
@@ -237,8 +237,7 @@ class RoomService:
             room.promote_next_host()
         return self._to_response(room)
 
-    # ------------------------------------------- requests that need approval
-
+   
     # someone WITHOUT control rights asks for a change; nothing happens yet
     def request_change(
         self, code: str, requester_id: Optional[str], kind: Optional[str], video_url: Optional[str], time_s: Optional[float]
