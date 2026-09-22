@@ -1,7 +1,5 @@
 import { useState } from "react";
 
-// The link box works for everyone. For the Host and Moderators it changes the video
-// straight away; for everyone else it sends a request that needs approval.
 export default function TopBar({ code, mayControl, copied, onShare, onChangeVideo, onLeave }) {
   const [url, setUrl] = useState("");
 
