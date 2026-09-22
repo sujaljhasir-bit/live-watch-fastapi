@@ -1,4 +1,4 @@
-// 75 -> "1:15", 3725 -> "1:02:05"
+
 export function formatTime(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const total = Math.floor(seconds);
