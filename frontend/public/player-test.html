@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>YouTube player test</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #141414; color: #ececec; margin: 0; padding: 20px; }
+  h1 { font-size: 1.2rem; margin: 0 0 6px; }
+  p { color: #9a9a9a; margin: 6px 0 12px; }
+  input { padding: 8px; border-radius: 6px; border: 1px solid #444; background: #272727; color: #fff; width: 170px; }
+  button { padding: 8px 14px; border: 0; border-radius: 6px; background: #e5383b; color: #fff; cursor: pointer; margin-right: 6px; }
+  #box { width: 640px; max-width: 100%; aspect-ratio: 16 / 9; background: #000; margin: 14px 0; }
+  #box iframe { width: 100%; height: 100%; border: 0; }
+  #log { background: #0d0d0d; border: 1px solid #333; border-radius: 8px; padding: 12px; font: 13px ui-monospace, Consolas, monospace; white-space: pre-wrap; min-height: 140px; }
+  #verdict { font-size: 1.05rem; font-weight: 600; margin: 10px 0; }
+  .ok { color: #3ecf6e; } .bad { color: #ff6b6b; } .wait { color: #f2d06b; }
+</style>
+</head>
+<body>
+<h1>YouTube player test</h1>
+<p>This page uses only YouTube's own player, none of the Watch Party code. It shows whether this video and this browser can play at all.</p>
+
+<div>
+  Video id: <input id="vid" value="dQw4w9WgXcQ" />
+  <button id="load">Load video</button>
+</div>
+
+<div id="box"></div>
+
+<div>
+  <button id="play">1. Play</button>
+  <button id="playmuted">2. Play muted</button>
+  <button id="pause">Pause</button>
+  <button id="unmute">Unmute</button>
+</div>
+<p>If <b>1</b> does nothing, try <b>2</b>. If that does nothing too, click the video itself.</p>
+
+<div id="verdict" class="wait">Waiting…</div>
+<div id="log"></div>
+
+<script>
+(function () {
+  var STATES = { "-1": "unstarted", "0": "ended", "1": "playing", "2": "paused", "3": "buffering", "5": "cued" };
+  var ERRORS = {
+    2: "the video id is not valid",
+    5: "the player had an HTML5 problem",
+    100: "the video was not found, or it is private",
+    101: "the owner does not allow embedding",
+    150: "the owner does not allow embedding",
+    152: "the owner does not allow embedding",
+    153: "YouTube rejected the embed request (the page sent no referrer or origin)"
+  };
+  var logEl = document.getElementById("log");
+  var verdictEl = document.getElementById("verdict");
+  var player = null;
+  var sawPlaying = false;
+  var lastError = null;
+
+  function log(text) {
+    var t = new Date().toLocaleTimeString();
+    logEl.textContent += t + "  " + text + "\n";
+  }
+  function verdict(text, cls) {
+    verdictEl.textContent = text;
+    verdictEl.className = cls;
+  }
+
+  log("page address: " + location.href);
+  log("browser: " + navigator.userAgent);
+  log("referrer policy: " + (document.referrer ? "referrer sent" : "no referrer (normal for a typed address)"));
+
+  function create(id) {
+    sawPlaying = false;
+    lastError = null;
+    verdict("Loading…", "wait");
+    if (player && player.destroy) { try { player.destroy(); } catch (e) {} }
+    var box = document.getElementById("box");
+    box.innerHTML = "";
+    var holder = document.createElement("div");
+    box.appendChild(holder);
+    player = new YT.Player(holder, {
+      width: "100%", height: "100%", videoId: id,
+      playerVars: { playsinline: 1, rel: 0, origin: location.origin },
+      events: {
+        onReady: function () { log("READY: the player loaded the video"); verdict("Loaded. Press Play.", "wait"); },
+        onStateChange: function (e) {
+          log("STATE: " + e.data + " (" + (STATES[e.data] || "?") + ")");
+          if (e.data === 1) { sawPlaying = true; verdict("PLAYING: this video and this browser work.", "ok"); }
+        },
+        onError: function (e) {
+          lastError = e.data;
+          log("ERROR " + e.data + ": " + (ERRORS[e.data] || "unknown error"));
+          verdict("ERROR " + e.data + ": " + (ERRORS[e.data] || "unknown error"), "bad");
+        },
+        onAutoplayBlocked: function () { log("AUTOPLAY BLOCKED: the browser refused to start the video by itself"); }
+      }
+    });
+    log("created a player for video " + id);
+  }
+
+  function need() { if (!player || !player.playVideo) { log("(the player is not ready yet)"); return false; } return true; }
+
+  function check(label) {
+    setTimeout(function () {
+      if (sawPlaying || lastError) return;
+      var s = player && player.getPlayerState ? player.getPlayerState() : "?";
+      log("after " + label + ": still not playing, state " + s + " (" + (STATES[s] || "?") + ")");
+      verdict("NOT PLAYING after " + label + " (state " + s + "). Try the next button.", "bad");
+    }, 3000);
+  }
+
+  document.getElementById("load").onclick = function () { create(document.getElementById("vid").value.trim()); };
+  document.getElementById("play").onclick = function () { if (need()) { log("you pressed Play"); player.playVideo(); check("Play"); } };
+  document.getElementById("playmuted").onclick = function () { if (need()) { log("you pressed Play muted"); player.mute(); player.playVideo(); check("Play muted"); } };
+  document.getElementById("pause").onclick = function () { if (need()) { log("you pressed Pause"); player.pauseVideo(); } };
+  document.getElementById("unmute").onclick = function () { if (need()) { log("you pressed Unmute"); player.unMute(); } };
+
+  function start() {
+    var fromAddress = new URLSearchParams(location.search).get("v");
+    if (fromAddress) document.getElementById("vid").value = fromAddress;
+    create(document.getElementById("vid").value.trim());
+  }
+
+  if (window.YT && window.YT.Player) {
+    start();
+  } else {
+    window.onYouTubeIframeAPIReady = start;
+    var tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    tag.onerror = function () { log("COULD NOT LOAD https://www.youtube.com/iframe_api : YouTube is blocked on this network or by an extension"); verdict("YouTube's script could not be loaded (blocked?).", "bad"); };
+    document.head.appendChild(tag);
+  }
+})();
+</script>
+</body>
+</html>
