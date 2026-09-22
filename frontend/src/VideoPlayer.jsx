@@ -148,3 +148,444 @@ export default function VideoPlayer({
         clickedRef.current = false;
 
         setProblem("");
+
+        player.loadVideoById({
+          videoId: cmd.videoId,
+          startSeconds: cmd.time,
+        });
+
+        watchForStuckPlayback();
+      }
+
+      else if (cmd.do === "cue") {
+        loadedIdRef.current =
+          cmd.videoId;
+
+        clickedRef.current = false;
+
+        setProblem("");
+
+        player.cueVideoById({
+          videoId: cmd.videoId,
+          startSeconds: cmd.time,
+        });
+      }
+
+      else if (cmd.do === "seek") {
+        player.seekTo(
+          Math.max(0, cmd.time),
+          true
+        );
+      }
+
+      else if (cmd.do === "play") {
+        /*
+         * Always seek to the authoritative position
+         * BEFORE playing.
+         */
+        player.seekTo(
+          Math.max(
+            0,
+            getAuthoritativeTime()
+          ),
+          true
+        );
+
+        /*
+         * Don't repeatedly fight browser autoplay
+         * before the user has clicked.
+         */
+        if (clickedRef.current) {
+          player.playVideo();
+          watchForStuckPlayback();
+        } else {
+          setAssist("button");
+        }
+      }
+
+      else if (cmd.do === "pause") {
+        player.pauseVideo();
+      }
+    }
+  }, [
+    getAuthoritativeTime,
+    watchForStuckPlayback,
+  ]);
+
+  /*
+   * Create YouTube player once.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    let player = null;
+
+    loadYouTubeApi().then((YT) => {
+      if (
+        cancelled ||
+        !containerRef.current
+      ) {
+        return;
+      }
+
+      const holder =
+        document.createElement("div");
+
+      containerRef.current.appendChild(
+        holder
+      );
+
+      player = new YT.Player(holder, {
+        width: "100%",
+        height: "100%",
+
+        playerVars: {
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          iv_load_policy: 3,
+          origin: window.location.origin,
+        },
+
+        events: {
+          onReady: () => {
+            readyRef.current = true;
+
+            syncNow();
+          },
+
+          onAutoplayBlocked: () => {
+            setAssist(
+              clickedRef.current
+                ? "clickthrough"
+                : "button"
+            );
+          },
+
+          onStateChange: (event) => {
+            setInfo((old) => ({
+              ...old,
+              state: event.data,
+            }));
+
+            if (
+              event.data ===
+              YT_STATE.PLAYING
+            ) {
+              setProblem("");
+              setAssist("none");
+              retriesRef.current = 0;
+
+              if (
+                unmuteWhenPlayingRef.current &&
+                playerRef.current
+              ) {
+                unmuteWhenPlayingRef.current =
+                  false;
+
+                playerRef.current.unMute();
+
+                setMuted(false);
+              }
+            }
+          },
+
+          onError: (event) => {
+            setInfo((old) => ({
+              ...old,
+              error: event.data,
+            }));
+
+            setProblem(
+              ERROR_TEXT[event.data] ||
+                `This video cannot be played (error ${event.data}).`
+            );
+
+            if (
+              event.data === 5 &&
+              retriesRef.current < 2
+            ) {
+              retriesRef.current += 1;
+
+              loadedIdRef.current = null;
+
+              setTimeout(
+                syncNow,
+                1000
+              );
+            }
+          },
+        },
+      });
+
+      playerRef.current = player;
+    });
+
+    return () => {
+      cancelled = true;
+
+      clearTimeout(
+        stuckTimerRef.current
+      );
+
+      readyRef.current = false;
+      loadedIdRef.current = null;
+      playerRef.current = null;
+
+      if (
+        player &&
+        player.destroy
+      ) {
+        player.destroy();
+      }
+    };
+  }, [syncNow]);
+
+  /*
+   * Update desired room state whenever
+   * the WebSocket gives us a new room.
+   */
+  useEffect(() => {
+    desiredRef.current = {
+      videoId,
+      playing,
+      time,
+      serverTime,
+    };
+
+    syncNow();
+  }, [
+    videoId,
+    playing,
+    time,
+    serverTime,
+    version,
+    syncNow,
+  ]);
+
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const player =
+        playerRef.current;
+
+      if (
+        !player ||
+        !readyRef.current ||
+        !loadedIdRef.current
+      ) {
+        return;
+      }
+
+      const state =
+        player.getPlayerState();
+
+      const actual =
+        finite(
+          player.getCurrentTime()
+        );
+
+      const target =
+        getAuthoritativeTime();
+
+    
+      if (
+        desiredRef.current.playing &&
+        (
+          state === YT_STATE.PLAYING ||
+          state === YT_STATE.BUFFERING
+        )
+      ) {
+        const drift =
+          Math.abs(
+            actual - target
+          );
+
+        if (drift > 0.35) {
+          player.seekTo(
+            target,
+            true
+          );
+        }
+      }
+
+  
+      if (
+        !desiredRef.current.playing &&
+        state !== YT_STATE.PLAYING &&
+        state !== YT_STATE.BUFFERING
+      ) {
+        const drift =
+          Math.abs(
+            actual - target
+          );
+
+        if (drift > 0.2) {
+          player.seekTo(
+            target,
+            true
+          );
+        }
+      }
+    }, 300);
+
+    return () => {
+      clearInterval(id);
+    };
+  }, [getAuthoritativeTime]);
+
+  /*
+   * Update UI progress.
+   */
+  useEffect(() => {
+    const id = setInterval(() => {
+      const player =
+        playerRef.current;
+
+      if (
+        !player ||
+        !readyRef.current ||
+        !loadedIdRef.current
+      ) {
+        return;
+      }
+
+      onTick({
+        time: finite(
+          player.getCurrentTime()
+        ),
+        duration: finite(
+          player.getDuration()
+        ),
+      });
+
+      const silent =
+        typeof player.isMuted ===
+          "function" &&
+        player.isMuted();
+
+      setMuted(
+        silent &&
+          player.getPlayerState() ===
+            YT_STATE.PLAYING
+      );
+    }, 250);
+
+    return () => {
+      clearInterval(id);
+    };
+  }, [onTick]);
+
+ 
+  function startPlayback() {
+    const player =
+      playerRef.current;
+
+    if (!player) return;
+
+    clickedRef.current = true;
+
+    setAssist("none");
+
+    const target =
+      getAuthoritativeTime();
+
+   
+    player.mute();
+
+    setMuted(true);
+
+   
+    player.seekTo(
+      target,
+      true
+    );
+
+    player.playVideo();
+
+    unmuteWhenPlayingRef.current =
+      true;
+
+    watchForStuckPlayback();
+  }
+
+  function turnSoundOn() {
+    if (playerRef.current) {
+      playerRef.current.unMute();
+    }
+
+    setMuted(false);
+  }
+
+  const showHelp =
+    Boolean(videoId) &&
+    !problem &&
+    playing;
+
+  return (
+    <div className="stage">
+      <div
+        ref={containerRef}
+        className="stage-player"
+      />
+
+      {assist !== "clickthrough" && (
+        <div
+          className={
+            showHelp ? "stage-shield stage-shield-clickable" : "stage-shield"
+          }
+          onClick={showHelp ? startPlayback : undefined}
+        />
+      )}
+
+      {!videoId && (
+        <div className="stage-message">
+          <span>No Video</span>
+        </div>
+      )}
+
+      {videoId && problem && (
+        <div className="stage-message stage-problem">
+          {problem}
+        </div>
+      )}
+
+      {showHelp &&
+        assist === "button" && (
+          <button
+            className="stage-start"
+            onClick={startPlayback}
+          >
+            Click to join the playback
+          </button>
+        )}
+
+      {showHelp &&
+        assist === "clickthrough" && (
+          <div className="stage-hint">
+            Your browser needs one click on
+            the video itself. Click the video
+            to start it.
+          </div>
+        )}
+
+      {muted && (
+        <button
+          className="stage-sound"
+          onClick={turnSoundOn}
+        >
+          🔇 Sound is off, click to turn it on
+        </button>
+      )}
+
+      {debug && (
+        <div className="stage-debug">
+          state {info.state} · error{" "}
+          {info.error} · help {assist} ·
+          muted {muted ? "yes" : "no"}
+        </div>
+      )}
+    </div>
+  );
+}
