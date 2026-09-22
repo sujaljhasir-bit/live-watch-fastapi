@@ -1,28 +1,32 @@
 import { useState } from "react";
 import { createRoom, joinRoom } from "./api";
 
-
+// An invite link looks like  http://localhost:5173/?room=AMX33S  and pre-fills the code.
 function codeFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("room") || "";
   return raw.toUpperCase().slice(0, 6);
 }
 
 export default function Home({ onEnter }) {
-  const [username, setUsername] = useState("");
+  const [joinName, setJoinName] = useState("");
   const [code, setCode] = useState(codeFromUrl);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [joinError, setJoinError] = useState("");
+  const [joinBusy, setJoinBusy] = useState(false);
 
-  async function enter(action) {
-    const name = username.trim();
+  const [createName, setCreateName] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [createBusy, setCreateBusy] = useState(false);
+
+  async function handleJoin() {
+    const name = joinName.trim();
     if (!name) {
-      setError("Enter your name first.");
+      setJoinError("Enter your name first.");
       return;
     }
-    setError("");
-    setBusy(true);
+    setJoinError("");
+    setJoinBusy(true);
     try {
-      const result = await action(name);
+      const result = await joinRoom(code, name);
       onEnter({
         code: result.room.code,
         token: result.token,
@@ -30,9 +34,32 @@ export default function Home({ onEnter }) {
         username: name,
       });
     } catch (e) {
-      setError(e.message);
+      setJoinError(e.message);
     } finally {
-      setBusy(false);
+      setJoinBusy(false);
+    }
+  }
+
+  async function handleCreate() {
+    const name = createName.trim();
+    if (!name) {
+      setCreateError("Enter your name first.");
+      return;
+    }
+    setCreateError("");
+    setCreateBusy(true);
+    try {
+      const result = await createRoom(name);
+      onEnter({
+        code: result.room.code,
+        token: result.token,
+        participantId: result.participantId,
+        username: name,
+      });
+    } catch (e) {
+      setCreateError(e.message);
+    } finally {
+      setCreateBusy(false);
     }
   }
 
@@ -46,9 +73,9 @@ export default function Home({ onEnter }) {
         <label>
           Your name
           <input
-            value={username}
+            value={joinName}
             maxLength={24}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => setJoinName(e.target.value)}
             placeholder="e.g. Alice"
           />
         </label>
@@ -64,23 +91,35 @@ export default function Home({ onEnter }) {
         </label>
 
         <button
-          disabled={busy || code.trim().length === 0}
-          onClick={() => enter((name) => joinRoom(code, name))}
+          disabled={joinBusy || code.trim().length === 0}
+          onClick={handleJoin}
         >
           Join room
         </button>
 
+        {joinError && <p className="error">{joinError}</p>}
+
         <div className="divider">or</div>
+
+        <label>
+          Your name
+          <input
+            value={createName}
+            maxLength={24}
+            onChange={(e) => setCreateName(e.target.value)}
+            placeholder="e.g. Alice"
+          />
+        </label>
 
         <button
           className="secondary"
-          disabled={busy}
-          onClick={() => enter((name) => createRoom(name))}
+          disabled={createBusy}
+          onClick={handleCreate}
         >
           Create a new room
         </button>
 
-        {error && <p className="error">{error}</p>}
+        {createError && <p className="error">{createError}</p>}
       </div>
     </div>
   );
