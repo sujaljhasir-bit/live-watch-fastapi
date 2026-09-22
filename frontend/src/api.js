@@ -1,7 +1,6 @@
 import { API_URL } from "./config";
 
-// One helper for every REST call: sends JSON, returns JSON, and turns any failure
-// into an Error whose message is safe to show on screen.
+
 async function request(path, options) {
   let response;
   try {
