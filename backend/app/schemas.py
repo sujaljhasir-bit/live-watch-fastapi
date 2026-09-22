@@ -1,10 +1,4 @@
-"""
-Pydantic models for the REST API.
 
-Field names use camelCase aliases so the JSON on the wire is byte-for-byte
-the same shape the frontend already expects (it was originally written
-against a Spring Boot + Jackson backend, which serializes camelCase).
-"""
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -21,7 +15,6 @@ class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-# ---------------------------------------------------------------- requests
 
 class CreateRoomRequest(CamelModel):
     username: str = Field(..., min_length=1, max_length=24)
@@ -31,7 +24,7 @@ class JoinRoomRequest(CamelModel):
     username: str = Field(..., min_length=1, max_length=24)
 
 
-# ---------------------------------------------------------------- responses
+
 
 class ParticipantDto(CamelModel):
     id: str
