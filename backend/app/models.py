@@ -1,10 +1,4 @@
-"""
-In-memory domain model for LiveWatch.
 
-This is a line-for-line port of the original Java model classes
-(role, partipant, room, ChangeRequest) to Python. Behaviour is kept
-identical on purpose so the frontend needs zero changes.
-"""
 from __future__ import annotations
 
 import time
