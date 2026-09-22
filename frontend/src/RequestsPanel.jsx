@@ -1,8 +1,6 @@
 import { describeRequest } from "./requests";
 
-// Changes that wait for approval.
-//  - Host and Moderators see EVERY request, with Approve / Decline.
-//  - Everyone else sees only their own, with a Cancel button.
+
 export default function RequestsPanel({ requests, meId, mayControl, send }) {
   const visible = mayControl ? requests : requests.filter((r) => r.requesterId === meId);
   if (visible.length === 0) return null;
