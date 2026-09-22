@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createRoom, joinRoom } from "./api";
 
-// An invite link looks like  http://localhost:5173/?room=AMX33S  and pre-fills the code.
+
 function codeFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("room") || "";
   return raw.toUpperCase().slice(0, 6);
@@ -53,12 +53,6 @@ export default function Home({ onEnter }) {
           />
         </label>
 
-        <button disabled={busy} onClick={() => enter((name) => createRoom(name))}>
-          Create a room
-        </button>
-
-        <div className="divider">or join one</div>
-
         <label>
           Room code
           <input
@@ -70,11 +64,20 @@ export default function Home({ onEnter }) {
         </label>
 
         <button
-          className="secondary"
           disabled={busy || code.trim().length === 0}
           onClick={() => enter((name) => joinRoom(code, name))}
         >
           Join room
+        </button>
+
+        <div className="divider">or</div>
+
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => enter((name) => createRoom(name))}
+        >
+          Create a new room
         </button>
 
         {error && <p className="error">{error}</p>}
