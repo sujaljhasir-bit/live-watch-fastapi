@@ -11,8 +11,7 @@ from .ws import router as ws_router
 
 app = FastAPI(title="LiveWatch API")
 
-# The original Spring Boot backend allowed every origin (@CrossOrigin(origins = "*")),
-# so we do the same here. Tighten this once you have a real domain to lock it to.
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
