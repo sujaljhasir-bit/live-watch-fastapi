@@ -57,21 +57,7 @@ export default function VideoPlayer({
     error: "-",
   });
 
-  /*
-   * IMPORTANT:
-   *
-   * The server gives us:
-   *
-   *   currentTime = video position at serverTime
-   *
-   * Therefore:
-   *
-   *   current server position
-   *      =
-   *   currentTime + (Date.now() - serverTime)
-   *
-   * This makes every browser calculate the same playback position.
-   */
+ 
   const getAuthoritativeTime = useCallback(() => {
     const desired = desiredRef.current;
 
@@ -378,14 +364,7 @@ export default function VideoPlayer({
     syncNow,
   ]);
 
-  /*
-   * CONTINUOUS SYNC
-   *
-   * Every 300ms compare local YouTube time
-   * with the authoritative server position.
-   *
-   * If drift > 0.35 sec, correct it.
-   */
+
   useEffect(() => {
     const id = setInterval(() => {
       const player =
@@ -410,10 +389,7 @@ export default function VideoPlayer({
       const target =
         getAuthoritativeTime();
 
-      /*
-       * While playing:
-       * keep everybody locked together.
-       */
+    
       if (
         desiredRef.current.playing &&
         (
@@ -434,10 +410,7 @@ export default function VideoPlayer({
         }
       }
 
-      /*
-       * While paused:
-       * keep exact position.
-       */
+  
       if (
         !desiredRef.current.playing &&
         state !== YT_STATE.PLAYING &&
@@ -504,9 +477,7 @@ export default function VideoPlayer({
     };
   }, [onTick]);
 
-  /*
-   * This MUST happen from an actual user click.
-   */
+ 
   function startPlayback() {
     const player =
       playerRef.current;
@@ -520,19 +491,12 @@ export default function VideoPlayer({
     const target =
       getAuthoritativeTime();
 
-    /*
-     * Muted playback is much more
-     * likely to be accepted.
-     */
+   
     player.mute();
 
     setMuted(true);
 
-    /*
-     * IMPORTANT:
-     * Start exactly where the server says
-     * everyone should be RIGHT NOW.
-     */
+   
     player.seekTo(
       target,
       true
