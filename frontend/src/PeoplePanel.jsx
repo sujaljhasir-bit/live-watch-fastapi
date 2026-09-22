@@ -1,6 +1,6 @@
 import { ROLE, isHost, isModerator, nameOf, roleOf } from "./roles";
 
-// The list of people with their roles. The host also gets buttons to manage them.
+
 export default function PeoplePanel({ people, hostId, meId, meRole, send }) {
   const iAmHost = isHost(meRole);
 
