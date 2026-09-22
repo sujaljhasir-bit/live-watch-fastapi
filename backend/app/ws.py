@@ -1,8 +1,4 @@
-"""
-The real-time half of the app: one WebSocket per connected browser tab,
-grouped by room code. Ported from WatchPartyHandler.java — message names,
-event names and behaviour are all kept identical to the original.
-"""
+
 import json
 from typing import Any, Dict, Optional
 
@@ -17,7 +13,7 @@ router = APIRouter()
 
 MAX_CHAT_LENGTH = 300
 
-# room code -> (participant id -> that person's open connection)
+
 rooms: Dict[str, Dict[str, WebSocket]] = {}
 
 
@@ -123,7 +119,7 @@ async def _chat(ws: WebSocket, room_code: str, my_id: str, my_name: str, text: O
 
 @router.websocket("/ws")
 async def watch_party_socket(websocket: WebSocket, room: Optional[str] = None, token: Optional[str] = None) -> None:
-    # ------------------------------------------------------------ connect
+   
     await websocket.accept()
 
     me: Optional[Participant] = None
@@ -150,7 +146,7 @@ async def watch_party_socket(websocket: WebSocket, room: Optional[str] = None, t
     await _broadcast(room_code, "user_joined", my_name, room_service.get_room(room_code))
     await _broadcast_requests(room_code)  # so a newcomer sees what is already waiting
 
-    # ------------------------------------------------------------ messages
+   
     try:
         while True:
             raw = await websocket.receive_text()
@@ -210,9 +206,9 @@ async def watch_party_socket(websocket: WebSocket, room: Optional[str] = None, t
     except WebSocketDisconnect:
         pass
     finally:
-        # ------------------------------------------------------------ disconnect
+       
         current_members = rooms.get(room_code)
-        # ignore closes of connections that were already replaced or kicked
+        
         if current_members is not None and current_members.get(my_id) is websocket:
             current_members.pop(my_id, None)
             if not current_members:
