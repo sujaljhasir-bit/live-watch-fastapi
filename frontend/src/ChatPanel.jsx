@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 const MAX_LENGTH = 300; // the server enforces the same limit
 
-// Room chat. Messages live only in this browser tab: people who join later do not see
-// what was said before they arrived.
+
 export default function ChatPanel({ messages, meId, send }) {
   const [text, setText] = useState("");
   const bottomRef = useRef(null);
